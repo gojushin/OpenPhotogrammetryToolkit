@@ -25,4 +25,4 @@ document:
     paths:
       - docs/_build/html
   only:
-    - master  # or main, depending on your default branch
+    - main
