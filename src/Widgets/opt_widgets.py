@@ -1,12 +1,18 @@
 from __future__ import annotations
 
-import sys
 import os
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QListWidget, QLabel, QListWidgetItem
-from PySide6.QtCore import QFileSystemWatcher, QObject, Signal, Qt
 import logging
 
+from PySide6.QtWidgets import QWidget, QListWidget, QLabel, QListWidgetItem, QFileDialog, QDialog, \
+    QHBoxLayout, QVBoxLayout, QPushButton, QSpacerItem, QSizePolicy
+from PySide6.QtCore import QFileSystemWatcher, QObject, Signal, Qt, QEvent, QSize
+
+from OpenPhotogrammetryToolkit import opt_helper_funcs as h_func
+
+
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".ico")
+
+WIDGET_TEXTS = h_func.import_json_as_dict(os.path.join(os.path.dirname(os.path.abspath(__file__)), "widget_texts.json"))
 
 
 class _FilePathObject(QLabel):
@@ -284,3 +290,106 @@ class FilePathListWidget(QWidget):
         self.curr_file_paths[fpo.label] = fpo
         self.fileHasChanged.fileHasChanged.emit(file_path)
 
+
+class _SquareButton(QPushButton):
+    def __init__(self, text='', parent=None):
+        super().__init__(text, parent)
+
+    def sizeHint(self):
+        # Ensuring the sizeHint's width and height are the same
+        size = super(_SquareButton, self).sizeHint()
+        dimension = max(size.width(), size.height())
+        return QSize(dimension, dimension)
+
+
+class StartupDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        # Setting Widget Size
+        self.setFixedSize(400, 250)
+
+        # Generic reusable Spacer
+        expanding_spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        # Create and fit all layouts.
+        layout = QVBoxLayout()
+
+        greeting_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+        hint_layout = QHBoxLayout()
+
+        layout.addLayout(greeting_layout)
+        layout.addLayout(button_layout)
+        layout.addLayout(hint_layout)
+
+        # Greeting
+        greeting = QLabel(WIDGET_TEXTS["StartupDialogWelcomeText"])
+        greeting.setAlignment(Qt.AlignCenter)
+
+        # Greeting Arrangement
+        greeting_layout.addItem(expanding_spacer)
+        greeting_layout.addWidget(greeting)
+        greeting_layout.addItem(expanding_spacer)
+
+        # Button to open a directory
+        self.open_dir_btn = _SquareButton("Open")
+        self.open_dir_btn.clicked.connect(self.open_directory)
+
+        # Button to create a directory
+        self.create_dir_btn = _SquareButton("Create")
+        self.create_dir_btn.clicked.connect(self.create_directory)
+
+        # Setting up hover events for buttons
+        self.open_dir_btn.installEventFilter(self)
+        self.create_dir_btn.installEventFilter(self)
+
+        # Button Arrangement
+        button_layout.addItem(expanding_spacer)
+        button_layout.addWidget(self.open_dir_btn)
+        button_layout.addItem(expanding_spacer)
+        button_layout.addWidget(self.create_dir_btn)
+        button_layout.addItem(expanding_spacer)
+
+        # Explanation Label
+        self.explanation_label = QLabel("")
+        self.explanation_label.setAlignment(Qt.AlignCenter)
+
+        # Hint Arrangement
+        hint_layout.addItem(expanding_spacer)
+        hint_layout.addWidget(self.explanation_label)
+        hint_layout.addItem(expanding_spacer)
+
+        # Set dialog layout
+        self.setLayout(layout)
+
+    def open_directory(self):
+        dir_path = QFileDialog.getExistingDirectory(self, "Select Directory")
+        if dir_path:
+            pass
+
+    def create_directory(self):
+        dir_path = QFileDialog.getExistingDirectory(self, "Create Directory")
+        if dir_path:
+            pass
+
+    def eventFilter(self, obj, event):
+        # Check for hover event
+        if event.type() == QEvent.Enter:
+            if obj == self.open_dir_btn:
+                self.explanation_label.setText(WIDGET_TEXTS["StartupDiaOpenDirHint"])
+            elif obj == self.create_dir_btn:
+                self.explanation_label.setText(WIDGET_TEXTS["StartupDiaCreateDirHint"])
+        elif event.type() == QEvent.Leave:
+            self.explanation_label.setText("")
+
+        return super().eventFilter(obj, event)
+
+
+class SelectionView(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.primary_selection_file_path = None
+        self.secondary_selection_file_path = None
+
+        self.primary_img_label = QLabel()
+        self.secondary_img_label = QLabel()
