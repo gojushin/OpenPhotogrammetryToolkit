@@ -9,7 +9,6 @@ from PySide6.QtCore import QFileSystemWatcher, QObject, Signal, Qt, QEvent, QSiz
 
 from OpenPhotogrammetryToolkit import opt_helper_funcs as h_func
 
-
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".ico")
 
 WIDGET_TEXTS = h_func.import_json_as_dict(os.path.join(os.path.dirname(os.path.abspath(__file__)), "widget_texts.json"))
@@ -23,6 +22,7 @@ class _FilePathObject(QLabel):
     :param parent: The parent widget.
     :type parent: QWidget
     """
+
     def __init__(self, file_path, parent=None):
         if not parent:
             logging.warning("FPO did NOT receive a parent!")
@@ -87,6 +87,7 @@ class _ClickableListWidget(QListWidget):
     :param parent: The parent widget of this list widget. Defaults to None.
     :type parent: QWidget or None
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
@@ -125,6 +126,7 @@ class FilePathListWidget(QWidget):
     :param parent: The parent widget. Defaults to None.
     :type parent: QWidget or None
     """
+
     def __init__(self, parent=None):
         """Initialize the file path list widget."""
         super().__init__(parent)
@@ -302,14 +304,22 @@ class _SquareButton(QPushButton):
         return QSize(dimension, dimension)
 
 
+class _StartupSignal(QObject):
+    """Signal for when a single file has changed."""
+    dirSelected = Signal(str)
+
+
 class StartupDialog(QDialog):
     def __init__(self):
         super().__init__()
         # Setting Widget Size
         self.setFixedSize(400, 250)
 
-        # Generic reusable Spacer
-        expanding_spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.dirSelectedSignal = _StartupSignal()
+
+        # Generic reusable Spacer. We need a function to create new instances, because this otherwise makes problems
+        # when deconstructing the QDialog
+        def expanding_spacer(): return QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
 
         # Create and fit all layouts.
         layout = QVBoxLayout()
@@ -327,9 +337,9 @@ class StartupDialog(QDialog):
         greeting.setAlignment(Qt.AlignCenter)
 
         # Greeting Arrangement
-        greeting_layout.addItem(expanding_spacer)
+        greeting_layout.addItem(expanding_spacer())
         greeting_layout.addWidget(greeting)
-        greeting_layout.addItem(expanding_spacer)
+        greeting_layout.addItem(expanding_spacer())
 
         # Button to open a directory
         self.open_dir_btn = _SquareButton("Open")
@@ -344,20 +354,20 @@ class StartupDialog(QDialog):
         self.create_dir_btn.installEventFilter(self)
 
         # Button Arrangement
-        button_layout.addItem(expanding_spacer)
+        button_layout.addItem(expanding_spacer())
         button_layout.addWidget(self.open_dir_btn)
-        button_layout.addItem(expanding_spacer)
+        button_layout.addItem(expanding_spacer())
         button_layout.addWidget(self.create_dir_btn)
-        button_layout.addItem(expanding_spacer)
+        button_layout.addItem(expanding_spacer())
 
         # Explanation Label
         self.explanation_label = QLabel("")
         self.explanation_label.setAlignment(Qt.AlignCenter)
 
         # Hint Arrangement
-        hint_layout.addItem(expanding_spacer)
+        hint_layout.addItem(expanding_spacer())
         hint_layout.addWidget(self.explanation_label)
-        hint_layout.addItem(expanding_spacer)
+        hint_layout.addItem(expanding_spacer())
 
         # Set dialog layout
         self.setLayout(layout)
@@ -365,12 +375,12 @@ class StartupDialog(QDialog):
     def open_directory(self):
         dir_path = QFileDialog.getExistingDirectory(self, "Select Directory")
         if dir_path:
-            pass
+            self.dirSelectedSignal.dirSelected.emit(dir_path)
 
     def create_directory(self):
         dir_path = QFileDialog.getExistingDirectory(self, "Create Directory")
         if dir_path:
-            pass
+            pass  # TODO Implement shallow working dirs in the future using symlinks.
 
     def eventFilter(self, obj, event):
         # Check for hover event

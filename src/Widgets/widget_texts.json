@@ -1,5 +1,5 @@
 {
   "StartupDialogWelcomeText": "Welcome to Open Photogrammetry Toolkit!\nPlease select which mode you want to operate in.",
   "StartupDiaOpenDirHint": "Open an existing directory",
-  "StartupDiaCreateDirHint": "Create a new working directory"
+  "StartupDiaCreateDirHint": "Create a new working directory.\n Coming soon. This directory will hold reference to files in several different folders."
 }
