@@ -294,11 +294,24 @@ class FilePathListWidget(QWidget):
 
 
 class _SquareButton(QPushButton):
+    """
+    A QPushButton that maintains a square shape and ensures equal width and height.
+
+    :param text: The button text.
+    :type text: str, optional
+    :param parent: The parent widget.
+    :type parent: QWidget or None, optional
+    """
     def __init__(self, text='', parent=None):
         super().__init__(text, parent)
 
     def sizeHint(self):
-        # Ensuring the sizeHint's width and height are the same
+        """
+        Reimplemented sizeHint to make the width and height equal.
+
+        :return: The recommended size for the button, which is square.
+        :rtype: QSize
+        """
         size = super(_SquareButton, self).sizeHint()
         dimension = max(size.width(), size.height())
         return QSize(dimension, dimension)
@@ -310,7 +323,15 @@ class _StartupSignal(QObject):
 
 
 class StartupDialog(QDialog):
+    """
+    Dialog for initial setup tasks such as opening or creating a directory.
+
+    :param QDialog: Inherits QDialog
+    """
     def __init__(self):
+        """
+        Constructor for StartupDialog, initializes the dialog and its components.
+        """
         super().__init__()
         # Setting Widget Size
         self.setFixedSize(400, 250)
@@ -373,16 +394,36 @@ class StartupDialog(QDialog):
         self.setLayout(layout)
 
     def open_directory(self):
+        """
+        Opens a dialog to select a directory and emits dirSelected signal with the selected path.
+
+        :return: None
+        """
         dir_path = QFileDialog.getExistingDirectory(self, "Select Directory")
         if dir_path:
             self.dirSelectedSignal.dirSelected.emit(dir_path)
 
     def create_directory(self):
+        """
+        Opens a dialog to create a new directory. This is currently a placeholder and will be implemented later.
+
+        :return: None
+        """
         dir_path = QFileDialog.getExistingDirectory(self, "Create Directory")
         if dir_path:
             pass  # TODO Implement shallow working dirs in the future using symlinks.
 
     def eventFilter(self, obj, event):
+        """
+        Filters events to respond to hover events over buttons.
+
+        :param obj: The object that generated the event.
+        :type obj: QObject
+        :param event: The event that occurred.
+        :type event: QEvent
+        :return: Whether the event was handled here.
+        :rtype: bool
+        """
         # Check for hover event
         if event.type() == QEvent.Enter:
             if obj == self.open_dir_btn:
