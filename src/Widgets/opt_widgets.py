@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import os
 import logging
+import os
 
+from PySide6.QtCore import QFileSystemWatcher, QObject, Signal, Qt, QEvent, QSize
 from PySide6.QtWidgets import QWidget, QListWidget, QLabel, QListWidgetItem, QFileDialog, QDialog, \
     QHBoxLayout, QVBoxLayout, QPushButton, QSpacerItem, QSizePolicy
-from PySide6.QtCore import QFileSystemWatcher, QObject, Signal, Qt, QEvent, QSize
 
 from OpenPhotogrammetryToolkit import opt_helper_funcs as h_func
 
@@ -160,6 +160,18 @@ class FilePathListWidget(QWidget):
         self.watcher = QFileSystemWatcher([self.curr_folder_path])
         self.watcher.directoryChanged.connect(self.update_file_list)
         self.watcher.fileChanged.connect(self.update_file)
+
+    def get_primary_selection(self):
+        if self._primary_sel is None:
+            return None
+
+        return self._primary_sel
+
+    def get_secondary_selection(self):
+        if self._secondary_sel is None:
+            return None
+
+        return self._secondary_sel
 
     def set_primary_selection(self, selection):
         """Set the primary selected file.
