@@ -12,13 +12,6 @@ from Widgets import FilePathObject, FilePathListWidget, StartupDialog, _SquareBu
 IMAGE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
 
 
-@pytest.fixture(scope="module", autouse=True)
-def qapp():
-    app = QApplication([])
-    yield app
-    app.quit()
-
-
 @pytest.fixture(scope="function")
 def file_path_widget():
     fpw = FilePathListWidget()
@@ -39,15 +32,23 @@ def startup_dialog():
     diag.close()
 
 
-def test_FilePathObject_initialization_fakepath():
-    """Test that the FilePathObject initializes correctly."""
+def test_FilePathObject_initialization_fakepath(qapp):
+    """
+    Test FilePathObject initialization with a fake path.
+
+    Ensures that initializing FilePathObject with a non-existent file path raises a FileExistsError.
+    """
     with pytest.raises(FileExistsError) as excinfo:
         test_path = "C:/fakepath/fakefile.txt"
         fpo = FilePathObject(test_path)
 
 
 def test_FilePathObject_initialization_realpath():
-    """Test that the FilePathObject initializes correctly."""
+    """
+    Test FilePathObject initialization with a real path.
+
+    Ensures that initializing FilePathObject with an actual file path correctly sets up its properties.
+    """
     temp_dir = tempfile.mkdtemp()
     target_file = os.path.join(temp_dir, "target.txt")
 
@@ -63,7 +64,11 @@ def test_FilePathObject_initialization_realpath():
 
 
 def test_FilePathObject_symlink_resolution(tmp_path):  # Will fail under Windows due to ! Run in Docker.
-    """Test resolution of symlink."""
+    """
+    Test FilePathObject symlink resolution.
+
+    Ensures that FilePathObject resolves symlinks to their target paths and initializes correctly.
+    """
     # Setup: Create a temporary file and a symlink pointing to it
     target_file = tmp_path / "target.txt"
     symlink_path = tmp_path / "symlink.lnk"
@@ -83,7 +88,11 @@ def test_FilePathObject_symlink_resolution(tmp_path):  # Will fail under Windows
 
 
 def test_FilePathListWidget_file_changed_signal(qtbot, tmp_path, file_path_widget):
-    """Test the fileHasChanged signal."""
+    """
+    Test the fileHasChanged signal of FilePathListWidget.
+
+    Ensures that modifying a file triggers the fileHasChanged signal with the correct file path as argument.
+    """
     widget = file_path_widget
     test_file = tmp_path / "test.txt"
     test_file.write_text("Initial text.")
@@ -97,7 +106,11 @@ def test_FilePathListWidget_file_changed_signal(qtbot, tmp_path, file_path_widge
 
 
 def test_FilePathListWidget_files_changed_signal(qtbot, tmp_path, file_path_widget):
-    """Test the filesHaveChanged signal."""
+    """
+    Test the filesHaveChanged signal of FilePathListWidget.
+
+    Ensures that adding files to the watched directory triggers the filesHaveChanged signal.
+    """
     widget = file_path_widget
     widget.set_watched_directory(str(tmp_path))  # Set to the temporary directory
 
@@ -113,7 +126,11 @@ def test_FilePathListWidget_files_changed_signal(qtbot, tmp_path, file_path_widg
 
 
 def test_FilePathListWidget_primary_selection_signal(qtbot, file_path_widget):
-    """Test the primarySelectionChanged signal."""
+    """
+    Test the primarySelectionChanged signal of FilePathListWidget.
+
+    Ensures that setting a primary selection triggers the primarySelectionChanged signal with the correct file path.
+    """
     widget = file_path_widget
     widget.set_watched_directory(IMAGE_DIR)  # Set to the predefined directory with images
     widget.update_file_list()  # Refresh to include the new files
@@ -129,7 +146,11 @@ def test_FilePathListWidget_primary_selection_signal(qtbot, file_path_widget):
 
 
 def test_FilePathListWidget_secondary_selection_signal(qtbot, file_path_widget):
-    """Test the secondarySelectionChanged signal."""
+    """
+    Test the secondarySelectionChanged signal of FilePathListWidget.
+
+    Ensures that setting a secondary selection triggers the secondarySelectionChanged signal with the correct file path.
+    """
     widget = file_path_widget
     widget.set_watched_directory(IMAGE_DIR)  # Set to the predefined directory with images
     widget.update_file_list()  # Refresh to include the new files
@@ -145,22 +166,34 @@ def test_FilePathListWidget_secondary_selection_signal(qtbot, file_path_widget):
 
 
 def test_SquareButton_size_hint(square_button):
-    # Assure that the width and height of sizeHint are equal for a square button
+    """
+    Test the sizeHint method of _SquareButton.
+
+    Ensures that the width and height returned by sizeHint are equal, maintaining a square aspect ratio.
+    """
     size_hint = square_button.sizeHint()
     assert size_hint.width() == size_hint.height(), "The button is not square."
 
 
 def test_StartupDialog_signal_emission(qtbot, startup_dialog):
-    # Verify that the dirSelected signal emits the correct string
+    """
+        Test the dirSelected signal emission of StartupDialog.
+
+        Ensures that the dirSelected signal emits the directory path when triggered.
+        """
     with qtbot.waitSignal(startup_dialog.dirSelectedSignal.dirSelected, timeout=100) as blocker:
-        # startup_dialog.dirSelectedSignal.dirSelected.emit(IMAGE_DIR)
         startup_dialog.dirSelectedSignal.dirSelected.emit(IMAGE_DIR)
 
     assert blocker.signal_triggered
     assert blocker.args[0] == IMAGE_DIR
 
 
-def test_StartupDialog_eventFilter_hover(qtbot, startup_dialog):
+def test_StartupDialog_eventFilter_hover(startup_dialog):
+    """
+    Test the hover event filter of StartupDialog.
+
+    Ensures that hovering over the open directory and create directory buttons updates the explanation label text accordingly.
+    """
     # Simulate hover enter event for open_dir_btn
     enter_event = QMouseEvent(QEvent.Enter, startup_dialog.open_dir_btn.pos(), Qt.NoButton, Qt.NoButton, Qt.NoModifier)
     QApplication.sendEvent(startup_dialog.open_dir_btn, enter_event)
