@@ -11,7 +11,7 @@ before_script:
   - source venv/bin/activate
   - pip install -r requirements.txt
   - pip install numpy
-  - pip install cv2
+  - pip install opencv-python
   - pip install pytest pytest-qt # Install pytest and the QT plugin for pytest
 
 test:
