@@ -2,3 +2,4 @@
 
 from .OPTPluginBase import PluginActionBase
 from .OPTPluginBase import PluginWidgetBase
+from .OPTPluginBase import _PluginRegisteredSignal
