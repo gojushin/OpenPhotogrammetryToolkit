@@ -23,6 +23,7 @@ document:
   stage: document
   script:
     - pip install sphinx  # Install Sphinx
+    - pip install furo # install the furo theme
     - cd docs
     - sphinx-apidoc -o . ../src  # Generate documentation from source code
     - make html  # Build HTML documentation
