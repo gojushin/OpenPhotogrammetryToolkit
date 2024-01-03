@@ -14,6 +14,7 @@ FilePathObject Class
     .. attribute:: Widgets.opt_widgets._FilePathObject.file_path
     Returns the File Path of the FPO.
 
+.. _fplw:
 
 FilePathListWidget Class
 ------------------------
