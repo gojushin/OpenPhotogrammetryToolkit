@@ -9,7 +9,7 @@ import main
 
 from OpenPhotogrammetryToolkit import PluginActionBase, PluginWidgetBase
 from Widgets import FilePathListWidget
-from opt_widgets import _FilePathObject
+from Widgets import FilePathObject
 
 IMAGE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
 
@@ -271,8 +271,8 @@ def test_selections(qapp, mock_main_window):
     assert guiwidget.secondarySelection is None
     assert actionwidget.secondarySelection is None
 
-    fpo1 = _FilePathObject(os.path.join(IMAGE_DIR, "test_img1.jpg"), mock_main_window.centralWidget())
-    fpo2 = _FilePathObject(os.path.join(IMAGE_DIR, "test_img2.jpg"), mock_main_window.centralWidget())
+    fpo1 = FilePathObject(os.path.join(IMAGE_DIR, "test_img1.jpg"), mock_main_window.centralWidget())
+    fpo2 = FilePathObject(os.path.join(IMAGE_DIR, "test_img2.jpg"), mock_main_window.centralWidget())
 
     mock_main_window.centralWidget()._primary_sel = fpo1
     mock_main_window.centralWidget()._secondary_sel = fpo2
@@ -293,10 +293,10 @@ def test_get_all(qapp, mock_main_window):
     guiwidget = PluginWidgetBase(mock_main_window, "test_widget")
     actionwidget = PluginActionBase(mock_main_window, "test_widget2")
 
-    fpo1 = _FilePathObject(os.path.join(IMAGE_DIR, "test_img1.jpg"), mock_main_window.centralWidget())
-    fpo2 = _FilePathObject(os.path.join(IMAGE_DIR, "test_img2.jpg"), mock_main_window.centralWidget())
-    fpo3 = _FilePathObject(os.path.join(IMAGE_DIR, "test_img3.jpg"), mock_main_window.centralWidget())
-    fpo4 = _FilePathObject(os.path.join(IMAGE_DIR, "test_img4.jpg"), mock_main_window.centralWidget())
+    fpo1 = FilePathObject(os.path.join(IMAGE_DIR, "test_img1.jpg"), mock_main_window.centralWidget())
+    fpo2 = FilePathObject(os.path.join(IMAGE_DIR, "test_img2.jpg"), mock_main_window.centralWidget())
+    fpo3 = FilePathObject(os.path.join(IMAGE_DIR, "test_img3.jpg"), mock_main_window.centralWidget())
+    fpo4 = FilePathObject(os.path.join(IMAGE_DIR, "test_img4.jpg"), mock_main_window.centralWidget())
 
     mock_file_paths = {
         fpo1.label: fpo1,
