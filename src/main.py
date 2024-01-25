@@ -137,6 +137,7 @@ class OPTMainWindow:
         Calls the start method of each loaded plugin to perform any necessary initialization or setup.
         """
         for plugin in self.loaded_plugins:
+            plugin.plugins = [p for p in self.loaded_plugins if p is not plugin]
             plugin.start()
 
 

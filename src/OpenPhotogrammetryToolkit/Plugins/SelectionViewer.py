@@ -199,8 +199,8 @@ class SelectionViewer(PluginWidgetBase):
         Initiates the viewer by loading the primary and secondary selections,
         if they are available and valid file paths.
         """
-        primary_fpo = self.fplw.get_primary_selection()
-        secondary_fpo = self.fplw.get_secondary_selection()
+        primary_fpo = self.primarySelection
+        secondary_fpo = self.primarySelection
 
         if primary_fpo:
             primary_fp = primary_fpo.file_path

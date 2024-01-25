@@ -9,6 +9,7 @@ import main
 
 from OpenPhotogrammetryToolkit import PluginActionBase, PluginWidgetBase
 from Widgets import FilePathListWidget
+from opt_widgets import _FilePathObject
 
 IMAGE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
 
@@ -21,6 +22,7 @@ class WIDGET_PLUGIN(PluginWidgetBase):
         self.test_prim_succ = False
         self.test_sec_succ = False
         self.test_start = False
+        self.stuff_executed = False
 
     def primary_selection_changed(self, selection: str):
         self.test_prim_succ = True
@@ -30,6 +32,9 @@ class WIDGET_PLUGIN(PluginWidgetBase):
 
     def start(self):
         self.test_start = True
+        
+    def exec_stuff(self):
+        self.stuff_executed = True
 """
 
 
@@ -118,6 +123,9 @@ def app_main(qtbot, qapp, tmp_path):
     # Construct our own mock plugin
     dummy_plugin = tmp_path / "WIDGET_PLUGIN.py"
     dummy_plugin.write_text(WIDGET_PLUGIN)
+
+    dummy_plugin2 = tmp_path / "WIDGET_PLUGIN2.py"
+    dummy_plugin2.write_text(WIDGET_PLUGIN.replace("WIDGET_PLUGIN", "WIDGET_PLUGIN2"))
 
     # Ensure OPT is in sys.path.
     prj_dir = os.path.dirname(os.path.dirname(__file__))
@@ -245,6 +253,69 @@ def test_plugin_widget_base_initialization(qapp, mock_main_window):
     assert widget.identifier == identifier
 
 
+def test_selections(qapp, mock_main_window):
+    """
+    Test primary and secondary selections for both PluginWidgetBase and PluginActionBase.
+
+    This test ensures that the primary and secondary selections are initially None and then correctly
+    updated to reflect changes in the selections. It verifies this behavior for both widget and action
+    plugin types.
+    """
+    identifier = "test_widget"
+    identifier2 = "test_widget2"
+    guiwidget = PluginWidgetBase(mock_main_window, identifier)
+    actionwidget = PluginActionBase(mock_main_window, identifier2)
+
+    assert guiwidget.primarySelection is None
+    assert actionwidget.primarySelection is None
+    assert guiwidget.secondarySelection is None
+    assert actionwidget.secondarySelection is None
+
+    fpo1 = _FilePathObject(os.path.join(IMAGE_DIR, "test_img1.jpg"), mock_main_window.centralWidget())
+    fpo2 = _FilePathObject(os.path.join(IMAGE_DIR, "test_img2.jpg"), mock_main_window.centralWidget())
+
+    mock_main_window.centralWidget()._primary_sel = fpo1
+    mock_main_window.centralWidget()._secondary_sel = fpo2
+
+    assert guiwidget.primarySelection is fpo1
+    assert actionwidget.primarySelection is fpo1
+    assert guiwidget.secondarySelection is fpo2
+    assert actionwidget.secondarySelection is fpo2
+
+
+def test_get_all(qapp, mock_main_window):
+    """
+    Test the get_all_files method for both PluginWidgetBase and PluginActionBase.
+
+    This test checks whether the get_all_files method correctly returns all file paths in the main window's
+    central widget. It also verifies the functionality of excluding specific files from the returned list.
+    """
+    guiwidget = PluginWidgetBase(mock_main_window, "test_widget")
+    actionwidget = PluginActionBase(mock_main_window, "test_widget2")
+
+    fpo1 = _FilePathObject(os.path.join(IMAGE_DIR, "test_img1.jpg"), mock_main_window.centralWidget())
+    fpo2 = _FilePathObject(os.path.join(IMAGE_DIR, "test_img2.jpg"), mock_main_window.centralWidget())
+    fpo3 = _FilePathObject(os.path.join(IMAGE_DIR, "test_img3.jpg"), mock_main_window.centralWidget())
+    fpo4 = _FilePathObject(os.path.join(IMAGE_DIR, "test_img4.jpg"), mock_main_window.centralWidget())
+
+    mock_file_paths = {
+        fpo1.label: fpo1,
+        fpo2.label: fpo2,
+        fpo3.label: fpo3,
+        fpo4.label: fpo4
+    }
+
+    mock_main_window.centralWidget().curr_file_paths = mock_file_paths
+
+    assert guiwidget.get_all_files() == list(mock_file_paths.values())
+    assert actionwidget.get_all_files() == list(mock_file_paths.values())
+
+    mock_file_paths.pop(fpo3.label)
+
+    assert guiwidget.get_all_files([fpo3]) == list(mock_file_paths.values())
+    assert actionwidget.get_all_files([fpo3]) == list(mock_file_paths.values())
+
+
 def test_plugin_widget_primary_selection_changes(qapp, mock_main_window):
     """
     Test primary selection changes in PluginWidgetBase.
@@ -306,7 +377,7 @@ def test_plugin_widget_start_and_primary_selection_changes(qapp, mock_main_windo
     assert widget.test_start
 
 
-def test_main_loads_and_start_plugin(qtbot, app_main, tmp_path):
+def test_main_loads_and_start_plugin(app_main):
     """
     Test the loading and starting of plugins in the main application.
 
@@ -314,7 +385,7 @@ def test_main_loads_and_start_plugin(qtbot, app_main, tmp_path):
     function is called.
     """
     # EXACTLY One Plugin (Our Mock Plugin) should be loaded
-    loaded_one_plugin = len(app_main.loaded_plugins) == 1
+    loaded_one_plugin = len(app_main.loaded_plugins) == 2
 
     # The Plugins "start()" function should have been called
     plugin_was_started = app_main.loaded_plugins[0].test_start
@@ -327,3 +398,41 @@ def test_main_loads_and_start_plugin(qtbot, app_main, tmp_path):
 
     assert loaded_one_plugin
     assert plugin_was_started
+
+
+def test_plugin_class_var(app_main):
+    """
+    Test the visibility of plugins within each other in the main application.
+
+    This test checks that each plugin within the main application does not have visibility of itself
+    but can see other loaded plugins. It ensures proper isolation and interaction among loaded plugins.
+    """
+    plug1 = app_main.loaded_plugins[0]
+    plug2 = app_main.loaded_plugins[1]
+
+    # Every Plugin should not be able to see itself.
+    assert plug1 not in plug1.plugins
+    assert plug2 not in plug2.plugins
+
+    # Every Plugin should instead only see the other one (since we only have two).
+    assert plug1.plugins[0] == plug2
+    assert plug2.plugins[0] == plug1
+
+    app_main.main_window.close()
+
+
+def test_plugin_interop(app_main):
+    """
+    Test the interoperability between loaded plugins in the main application.
+
+    This test ensures that an action performed by one plugin (here, executing 'exec_stuff' method)
+    has the expected effect on another plugin (here, setting 'stuff_executed' to True). It verifies
+    the ability of plugins to interact with each other correctly within the main application environment.
+    """
+    plug1 = app_main.loaded_plugins[0]
+    plug2 = app_main.loaded_plugins[1]
+
+    plug1.plugins[0].exec_stuff()
+    assert plug2.stuff_executed
+
+    app_main.main_window.close()

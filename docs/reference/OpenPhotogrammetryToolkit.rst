@@ -12,9 +12,26 @@ The following class is the basis for Widget-Based Plugins. (See also: :doc:`/plu
    :members:
    :show-inheritance:
 
-You can access the :ref:`FilePathListWidget <fplw>` from your Plugin at any time to get the current selection:
+   .. attribute:: identifier
+      :type: str
 
-.. attribute:: OpenPhotogrammetryToolkit.OPTPluginBase.PluginActionWidget.fplw
+      A unique identifier for the plugin.
+
+   .. attribute:: parent
+      :type: QWidget
+
+      The main window of the plugin.
+
+
+   .. attribute:: plugins
+      :type: list
+
+      Stores a list of all initialized plugins.
+
+   .. attribute:: fplw
+       :type: FilePathListWidget
+
+       You can use the this attribute to access all the relevant data of the application`.
 
 .. _plugin_action_base:
 
@@ -27,9 +44,26 @@ The following class is the basis for Action-Based Plugins. (See also: :doc:`/plu
    :members:
    :show-inheritance:
 
-You can access the :ref:`FilePathListWidget <fplw>` from your Plugin at any time to get the current selection:
+   .. attribute:: identifier
+      :type: str
 
-.. attribute:: OpenPhotogrammetryToolkit.OPTPluginBase.PluginActionBase.fplw
+      A unique identifier for the plugin.
+
+   .. attribute:: parent
+      :type: QWidget
+
+      The main window of the plugin.
+
+
+   .. attribute:: plugins
+      :type: list
+
+      Stores a list of all initialized plugins.
+
+   .. attribute:: fplw
+       :type: FilePathListWidget
+
+       You can use the this attribute to access all the relevant data of the application`.
 
 OPT Utilities
 ^^^^^^^^^^^^^^^^^^

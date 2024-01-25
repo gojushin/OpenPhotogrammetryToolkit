@@ -46,8 +46,8 @@ class CalculateMSE(PluginActionBase):
 
         :raises ValueError: If either of the images is not selected, invalid or if they do not match in size.
         """
-        primary_fpo = self.fplw.get_primary_selection()
-        secondary_fpo = self.fplw.get_secondary_selection()
+        primary_fpo = self.primarySelection
+        secondary_fpo = self.secondarySelection
 
         if not primary_fpo or not secondary_fpo:
             raise ValueError("Need to have selected both elements to calculate MSE.")
