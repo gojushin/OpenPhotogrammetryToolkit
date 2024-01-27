@@ -10,7 +10,7 @@ File and Class Naming
 
 - **.py Files**: Each plugin should be a separate `.py` file located in the designated plugin directory. The file name should reflect the plugin's purpose or functionality.
 
-- **Class Naming**: The class within the `.py` file must have the same name as the file (excluding the `.py` extension). This naming convention is crucial as the toolkit dynamically loads the class based on the file name.
+- **Class Naming**: The class within the `.py` file must have the same name as the file (excluding the `.py` extension).This naming convention is crucial as the toolkit dynamically loads the class based on the file name.
 
 Inheritance and Types of Plugins
 --------------------------------
@@ -20,12 +20,13 @@ Depending on the plugin's intended functionality, it should inherit from one of 
 1. **GUI-Based Widgets**:
 
    - Inherit from :ref:`OpenPhotogrammetryToolkit.PluginWidgetBase<plugin_widget_base>`.
-   - These plugins are GUI components like custom viewers, editors, or widgets integrated within the application's interface.
+   - These plugins are GUI components like custom viewers, editors, or widgets integrated within the application's interface. They are dockable, can exist as floating window, and will be automatically docked and parented to the :ref:`FilePathListWidget<fplw>`.
+   - Please make sure to comply with the `Qt Licensing Conditions`_ when extending the PySide6 framwork.
 
 2. **MenuBar Entries**:
 
    - Inherit from :ref:`OpenPhotogrammetryToolkit.PluginActionBase<plugin_action_base>`.
-   - These plugins represent actions or commands accessible from the application's menu bar rather than standalone GUI widgets.
+   - These plugins represent actions or commands accessible from the application's `MenuBar`_ rather than standalone GUI widgets.
 
 MenuBar Naming Convention
 -------------------------
@@ -56,16 +57,24 @@ Widget
     PLUGIN_NAME = "PLUGIN_NAME"
     PLUGIN_DESCRIPTION = "Plugin Description. "
     PLUGIN_AUTHOR = "Your Name or Company."
-    LICENSE = "MIT"
+    LICENSE = "LGPLv3"
     VERSION = "0.0.1"
 
 
     class TestPlugin(PluginWidgetBase):
         def __init__(self, parent, identifier=PLUGIN_NAME):
             super().__init__(opt_main_window=parent, identifier=identifier)
-            # Add any initialization code here. Mind that plugin-dependencies might not be available yet.
+            # Add any initialization code here and construct GUI here.
+            # Keep in mind that plugin-dependencies are not available yet.
 
-            # Signals: plugin_registered
+            # Signals:
+            # plugin_registered
+
+            # Attributes / Properties:
+            # parent, fplw, primarySelection, secondarySelection
+
+            # Methods:
+            # get_all_files
 
         def primary_selection_changed(self, selection: str):
             # Called when the primary selection changes.
@@ -76,7 +85,8 @@ Widget
             pass
 
         def start(self):
-            # Start is called, once all plugins are loaded and the application is constructed for the first time.
+            # Start is called, once all plugins are loaded and
+            # the application is constructed for the first time.
             pass
 
 
@@ -96,9 +106,17 @@ Action
     class TestPlugin(PluginActionBase):
         def __init__(self, parent, identifier=PLUGIN_NAME):
             super().__init__(opt_main_window=parent, identifier=identifier)
-            # Add any initialization code here. Mind that plugin-dependencies might not be available yet.
+            # Add any initialization code here.
+            # Keep in mind that plugin-dependencies are not available yet.
 
-            # Signals: plugin_registered
+            # Signals:
+            # plugin_registered
+
+            # Attributes / Properties:
+            # parent, fplw, primarySelection, secondarySelection
+
+            # Methods:
+            # get_all_files
 
         def primary_selection_changed(self, selection: str):
             # Called when the primary selection changes.
@@ -109,7 +127,8 @@ Action
             pass
 
         def start(self):
-            # Start is called, once all plugins are loaded and the application is constructed for the first time.
+            # Start is called, once all plugins are loaded and
+            # the application is constructed for the first time.
             pass
 
         def on_triggered(self):
@@ -117,3 +136,5 @@ Action
             pass
 
 
+.. _MenuBar: https://doc.qt.io/qtforpython-6/PySide6/QtWidgets/QMenuBar.html
+.. _Qt Licensing Conditions: https://www.qt.io/licensing
