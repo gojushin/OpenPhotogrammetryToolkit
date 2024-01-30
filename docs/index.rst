@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Open Photogrammetry Toolkit's documentation!
+Welcome to Open Photogrammetry Toolkit's Documentation!
 =======================================================
 
 Welcome to the API documentation for OpenPhotogrammetryToolkit (OPT). OPT is a Python-based framework that is designed to facilitate the process of capturing and evaluating source material for photogrammetry and Structure from Motion (SFM) tasks.

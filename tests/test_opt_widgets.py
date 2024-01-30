@@ -14,9 +14,9 @@ IMAGE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
 
 @pytest.fixture(scope="function")
 def file_path_widget():
-    fpw = FilePathListWidget()
-    yield fpw
-    fpw.close()
+    fplw = FilePathListWidget()
+    yield fplw
+    fplw.close()
 
 
 @pytest.fixture(scope="function")
@@ -87,22 +87,25 @@ def test_FilePathObject_symlink_resolution(tmp_path):  # Will fail under Windows
     assert os.path.realpath(fpo.file_path) == os.path.realpath(str(target_file))
 
 
-def test_FilePathListWidget_file_changed_signal(qtbot, tmp_path, file_path_widget):
+def test_FilePathListWidget_file_added_and_removed_signals(qtbot, tmp_path, file_path_widget):
     """
-    Test the fileHasChanged signal of FilePathListWidget.
+    Test the fileAdded and fileRemoved signal of FilePathListWidget.
 
-    Ensures that modifying a file triggers the fileHasChanged signal with the correct file path as argument.
+    Ensures that adding and removing a file triggers the corresponding signals with the correct file path as argument.
     """
-    widget = file_path_widget
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("Initial text.")
+    file_path_widget.set_watched_directory(str(tmp_path))
+    test_file = tmp_path / "test.png"
 
-    with qtbot.waitSignal(widget.fileHasChanged.fileHasChanged, timeout=100) as blocker:
-        test_file.write_text("Modified text.")  # Modify the file to trigger signal
-        widget.update_file(str(test_file))  # Simulate the file update call
+    with qtbot.waitSignal(file_path_widget.fileAdded.fileAdded, timeout=120) as blocker:
+        test_file.write_text("")
+
+    with qtbot.waitSignal(file_path_widget.fileRemoved.fileRemoved, timeout=120) as blocker2:
+        os.remove(test_file)
 
     assert blocker.signal_triggered
+    assert blocker2.signal_triggered
     assert blocker.args == [str(test_file)]
+    assert blocker2.args == [str(test_file)]
 
 
 def test_FilePathListWidget_files_changed_signal(qtbot, tmp_path, file_path_widget):
@@ -111,18 +114,12 @@ def test_FilePathListWidget_files_changed_signal(qtbot, tmp_path, file_path_widg
 
     Ensures that adding files to the watched directory triggers the filesHaveChanged signal.
     """
-    widget = file_path_widget
-    widget.set_watched_directory(str(tmp_path))  # Set to the temporary directory
 
-    with qtbot.waitSignal(widget.filesHaveChanged.filesHaveChanged, timeout=100) as blocker:
-        # Copy files from IMAGE_DIR to tmp_path. Adding Files should trigger a signal.
-        for file_name in os.listdir(IMAGE_DIR):
-            source = os.path.join(IMAGE_DIR, file_name)
-            destination = tmp_path / file_name
-            shutil.copy(source, destination)  # Triggers the update
-            break  # Testing for more is pointless
+    with qtbot.waitSignal(file_path_widget.watcherInitialized.watcherInitialized, timeout=100) as blocker:
+        file_path_widget.set_watched_directory(IMAGE_DIR)
 
     assert blocker.signal_triggered
+    assert len(blocker.args[0]) == 4
 
 
 def test_FilePathListWidget_primary_selection_signal(qtbot, file_path_widget):
@@ -133,7 +130,7 @@ def test_FilePathListWidget_primary_selection_signal(qtbot, file_path_widget):
     """
     widget = file_path_widget
     widget.set_watched_directory(IMAGE_DIR)  # Set to the predefined directory with images
-    widget.update_file_list()  # Refresh to include the new files
+    widget.intialize_file_list()  # Refresh to include the new files
 
     fpo = next(iter(widget.curr_file_paths.values()))
 
@@ -153,7 +150,7 @@ def test_FilePathListWidget_secondary_selection_signal(qtbot, file_path_widget):
     """
     widget = file_path_widget
     widget.set_watched_directory(IMAGE_DIR)  # Set to the predefined directory with images
-    widget.update_file_list()  # Refresh to include the new files
+    widget.intialize_file_list()  # Refresh to include the new files
 
     fpo = next(iter(widget.curr_file_paths.values()))
 

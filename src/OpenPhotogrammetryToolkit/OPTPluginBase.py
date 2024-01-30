@@ -14,7 +14,6 @@ from PySide6.QtCore import QObject, Signal, Slot
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QWidget
 
-
 class _PluginRegisteredSignal(QObject):
     """
     An internal signal class used by plugin base classes to emit registration signals.
@@ -80,6 +79,8 @@ class PluginActionBase(QAction):
 
         :param excluded: A list of files to exclude.
         :type excluded: list, optional
+        :return: A list of FPOs
+        :rtype: list[FilePathObject]
         """
         return self._allFiles(excluded)
 
@@ -181,6 +182,8 @@ class PluginWidgetBase(QWidget):
 
         :param excluded: A list of files to exclude.
         :type excluded: list, optional
+        :return: A list of FPOs
+        :rtype: list[FilePathObject]
         """
         return self._allFiles(excluded)
 

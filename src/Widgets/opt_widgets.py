@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import logging
 import os
 
@@ -43,6 +44,7 @@ class _FilePathObject(QLabel):
             raise FileExistsError("{} does not exist!".format(self.file_path))
 
         self.label = os.path.basename(file_path)
+        self._itemRef = None
 
         self.setText(self.label)
         self.change_style_unselected()
@@ -60,14 +62,19 @@ class _FilePathObject(QLabel):
         self.setStyleSheet("QLabel { color: orange; font-weight: bold; }")
 
 
-class _FileChangedSignal(QObject):
+class _FileAddedSignal(QObject):
     """Signal for when a single file has changed."""
-    fileHasChanged = Signal(str)
+    fileAdded = Signal(str)
 
 
-class _FilesChangedSignal(QObject):
+class _FileRemovedSignal(QObject):
+    """Signal for when a single file has changed."""
+    fileRemoved = Signal(str)
+
+
+class _WatcherInitializedSingal(QObject):
     """Signal for when multiple files have changed."""
-    filesHaveChanged = Signal(list)
+    watcherInitialized = Signal(list)
 
 
 class _PrimarySelectionSignal(QObject):
@@ -134,19 +141,20 @@ class FilePathListWidget(QWidget):
         self._primary_sel: _FilePathObject = None
         self._secondary_sel: _FilePathObject = None
 
-        self.fileHasChanged = _FileChangedSignal()
-        self.filesHaveChanged = _FilesChangedSignal()
+        self.fileAdded = _FileAddedSignal()
+        self.fileRemoved = _FileRemovedSignal()
+        self.watcherInitialized = _WatcherInitializedSingal()
         self.primarySelectionChanged = _PrimarySelectionSignal()
         self.secondarySelectionChanged = _SecondarySelectionSignal()
 
         self.curr_file_paths = {}
-        self.curr_folder_path = None
 
         self.layout = QVBoxLayout(self)
         self.listWidget = _ClickableListWidget(parent=self)
         self.layout.addWidget(self.listWidget)
 
-        self.watcher = None
+        self.curr_folder_path = None
+        self.watched_directory = None
 
     def set_watched_directory(self, dir_path):
         """Set the directory for the widget to monitor.
@@ -155,25 +163,36 @@ class FilePathListWidget(QWidget):
         :type dir_path: str
         """
         self.curr_folder_path = dir_path
-        self.update_file_list()
+        self.intialize_file_list()
 
         self.watcher = QFileSystemWatcher([self.curr_folder_path])
-        self.watcher.directoryChanged.connect(self.update_file_list)
-        self.watcher.fileChanged.connect(self.update_file)
+        self.watcher.directoryChanged.connect(self.update_file)
 
     def get_primary_selection(self):
+        """
+        Retrieves the primary selected file path object.
+
+        :return: The primary selected file path object if it exists, otherwise None.
+        :rtype: _FilePathObject or None
+        """
         if self._primary_sel is None:
             return None
 
         return self._primary_sel
 
     def get_secondary_selection(self):
+        """
+        Retrieves the secondary selected file path object.
+
+        :return: The secondary selected file path object if it exists, otherwise None.
+        :rtype: _FilePathObject or None
+        """
         if self._secondary_sel is None:
             return None
 
         return self._secondary_sel
 
-    def set_primary_selection(self, selection):
+    def set_primary_selection(self, selection, broadcast_change=True):
         """Set the primary selected file.
 
         :param selection: the selection
@@ -187,13 +206,14 @@ class FilePathListWidget(QWidget):
             if selection is self._secondary_sel:
                 self._secondary_sel = None
 
-                # Clear previous selection
+            # Clear previous selection
             if self._primary_sel:
                 self._primary_sel.change_style_unselected()
 
             selection.change_style_primary()
             self._primary_sel = selection
-            self.primarySelectionChanged.primarySelectionChanged.emit(self._primary_sel.file_path)
+            if broadcast_change:
+                self.primarySelectionChanged.primarySelectionChanged.emit(self._primary_sel.file_path)
             return
 
         # In case label is provided
@@ -215,9 +235,11 @@ class FilePathListWidget(QWidget):
 
         fpo.change_style_primary()
         self._primary_sel = fpo
-        self.primarySelectionChanged.primarySelectionChanged.emit(self._primary_sel.file_path)
 
-    def set_secondary_selection(self, selection):
+        if broadcast_change:
+            self.primarySelectionChanged.primarySelectionChanged.emit(self._primary_sel.file_path)
+
+    def set_secondary_selection(self, selection, broadcast_change=True):
         """Set the secondary selected file.
 
         :param selection: the selection
@@ -237,7 +259,8 @@ class FilePathListWidget(QWidget):
 
             selection.change_style_secondary()
             self._secondary_sel = selection
-            self.secondarySelectionChanged.secondarySelectionChanged.emit(self._secondary_sel.file_path)
+            if broadcast_change:
+                self.secondarySelectionChanged.secondarySelectionChanged.emit(self._secondary_sel.file_path)
             return
 
         # In case label is provided
@@ -259,9 +282,20 @@ class FilePathListWidget(QWidget):
 
         fpo.change_style_secondary()
         self._secondary_sel = fpo
-        self.secondarySelectionChanged.secondarySelectionChanged.emit(self._secondary_sel.file_path)
+
+        if broadcast_change:
+            self.secondarySelectionChanged.secondarySelectionChanged.emit(self._secondary_sel.file_path)
 
     def get_fpo_from_current(self, path) -> _FilePathObject:
+        """
+        Retrieves the file path object (_FilePathObject) corresponding to the given path from the current file paths.
+
+        :param path: The path for which to retrieve the file path object.
+        :type path: str
+        :return: The file path object if found, otherwise None.
+        :rtype: _FilePathObject or None
+        :raises KeyError: If the selected object does not exist.
+        """
         if os.path.isfile(path):
             path = os.path.basename(path)
 
@@ -271,12 +305,13 @@ class FilePathListWidget(QWidget):
             logging.warning("Selected Object does not exist!")
             return None
 
-    def update_file_list(self):
+    def intialize_file_list(self):
         """Updates the displayed list of files in the monitored directory.
 
         This method clears the existing list and repopulates it based on the files
         found in the currently watched directory. Only processes image files.
         """
+
         self.listWidget.clear()
 
         for file_name in os.listdir(self.curr_folder_path):
@@ -284,25 +319,110 @@ class FilePathListWidget(QWidget):
                 full_path = os.path.join(self.curr_folder_path, file_name)
                 # Create a FilePathObject for each file
                 fpo = _FilePathObject(full_path, parent=self)
-                self.curr_file_paths[fpo.label] = fpo
-                # Create a QListWidgetItem for the list
-                item = QListWidgetItem(self.listWidget)
-                # Set the FilePathObject as the item's widget
-                self.listWidget.setItemWidget(item, fpo)
-                # Add the item to the list
-                self.listWidget.addItem(item)
+                self._add_fpo_to_view(fpo)
 
-        self.filesHaveChanged.filesHaveChanged.emit(list(self.curr_file_paths.values()))
+        self.watcherInitialized.watcherInitialized.emit(list(self.curr_file_paths.values()))
 
-    def update_file(self, file_path):
+    def _add_fpo_to_view(self, fpo):
+        """
+        Adds a file path object to the list widget view.
+
+        :param fpo: The file path object to add to the view.
+        :type fpo: _FilePathObject
+        """
+        if fpo.label not in self.curr_file_paths.keys():
+            # Create a QListWidgetItem for the list
+            item = QListWidgetItem(self.listWidget)
+            # Set the FilePathObject as the item's widget
+            fpo._itemRef = item
+            self.listWidget.setItemWidget(item, fpo)
+            # Add the item to the list
+            self.listWidget.addItem(item)
+
+            self.curr_file_paths[fpo.label] = fpo
+
+    def _remove_fpo_from_view(self, fpo):
+        """
+        Removes a file path object from the list widget view.
+
+        :param fpo: The file path object to be removed.
+        :type fpo: _FilePathObject
+        """
+        if fpo.label in self.curr_file_paths.keys():
+            # Unselect if selected
+            if fpo == self.get_primary_selection():
+                self._primary_sel.change_style_unselected()
+                self._primary_sel = None
+            elif fpo == self.get_secondary_selection():
+                self._secondary_sel.change_style_unselected()
+                self._secondary_sel = None
+
+            idx = self.listWidget.indexFromItem(fpo._itemRef)
+            item = self.listWidget.takeItem(idx.row())
+            self.curr_file_paths.pop(fpo.label)
+
+            del fpo
+            del item
+
+    def update_file(self, dir_path):
         """Update the list with a single file change.
 
-        :param file_path: The path to the updated file
+        :param dir_path: The path to the updated directory
         :type file_path: str
         """
-        fpo = _FilePathObject(file_path, parent=self)
-        self.curr_file_paths[fpo.label] = fpo
-        self.fileHasChanged.fileHasChanged.emit(file_path)
+        files = set()
+
+        for file_name in os.listdir(dir_path):
+            if any(file_name.lower().endswith(ext) for ext in IMAGE_EXTENSIONS):
+                full_path = os.path.join(dir_path, file_name)
+                files.add(full_path)
+
+        # We track changes and operate on the end to not change the dict during iteration
+        fpos = set(f.file_path for f in self.curr_file_paths.values())
+
+        added = list(files - fpos)
+        removed = list(fpos - files)
+
+        for a in added:
+            print("Added {}".format(a))
+            self._file_added(a)
+
+        for r in removed:
+            print("Deleted {}".format(r))
+            self._file_removed(r)
+
+    def _file_added(self, file):
+        """
+        Handles the addition of a file to the view.
+
+        :param file: The path of the file that has been added.
+        :type file: str
+        """
+        fpo = _FilePathObject(file, parent=self)
+        self._add_fpo_to_view(fpo)
+        self.fileAdded.fileAdded.emit(file)
+
+    def _file_edited(self, file):
+        """
+        Handles the editing of a file in the view. This is currently a placeholder with no implementation.
+
+        :param file: The path of the file that has been edited.
+        :type file: str
+        """
+        # do nothing
+        # emit nothing
+        pass
+
+    def _file_removed(self, file):
+        """
+        Handles the removal of a file from the view.
+
+        :param file: The path of the file that has been removed.
+        :type file: str
+        """
+        fpo = self.curr_file_paths[os.path.basename(file)]
+        self._remove_fpo_from_view(fpo)
+        self.fileRemoved.fileRemoved.emit(file)
 
 
 class _SquareButton(QPushButton):
@@ -446,13 +566,3 @@ class StartupDialog(QDialog):
             self.explanation_label.setText("")
 
         return super().eventFilter(obj, event)
-
-
-class SelectionView(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.primary_selection_file_path = None
-        self.secondary_selection_file_path = None
-
-        self.primary_img_label = QLabel()
-        self.secondary_img_label = QLabel()
